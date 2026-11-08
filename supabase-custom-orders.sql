@@ -33,3 +33,20 @@ drop policy if exists "Anyone uploads custom request images" on storage.objects;
 create policy "Anyone uploads custom request images" on storage.objects for insert to anon with check (bucket_id='custom-order-images');
 drop policy if exists "Admins delete custom request images" on storage.objects;
 create policy "Admins delete custom request images" on storage.objects for delete to authenticated using (bucket_id='custom-order-images' and exists(select 1 from public.store_admins a where a.user_id=auth.uid()));
+
+-- Product categories managed from the admin dashboard
+create table if not exists public.store_categories (
+ id uuid primary key default gen_random_uuid(),
+ name text not null unique check (char_length(name) between 1 and 40),
+ created_at timestamptz not null default now()
+);
+alter table public.store_categories enable row level security;
+drop policy if exists "Public can view store categories" on public.store_categories;
+create policy "Public can view store categories" on public.store_categories for select to anon, authenticated using (true);
+drop policy if exists "Admins manage store categories" on public.store_categories;
+create policy "Admins manage store categories" on public.store_categories for all to authenticated
+using (exists(select 1 from public.store_admins a where a.user_id=auth.uid()))
+with check (exists(select 1 from public.store_admins a where a.user_id=auth.uid()));
+grant select on public.store_categories to anon, authenticated;
+grant insert,update,delete on public.store_categories to authenticated;
+insert into public.store_categories(name) values ('بوسترات'),('مطبوعات') on conflict(name) do nothing;
